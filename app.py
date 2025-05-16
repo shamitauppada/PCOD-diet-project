@@ -1,24 +1,50 @@
-# app.py
 import streamlit as st
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.preprocessing import LabelEncoder
 
-# Load dataset
+# Custom CSS for pink/white background and black text
+st.markdown("""
+    <style>
+    body, .stApp {
+        background-color: #ffe6f0;
+        color: black;
+    }
+    .stTextInput > div > div > input, 
+    .stNumberInput input, 
+    .stSlider > div, 
+    .stRadio > div {
+        color: black !important;
+    }
+    .stButton > button {
+        background-color: #ffb6c1;
+        color: black;
+        border: none;
+    }
+    .stButton > button:hover {
+        background-color: #ff99bb;
+    }
+    .stSuccess {
+        background-color: #fff0f5 !important;
+        color: black !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# Load and prepare dataset
 df = pd.read_csv("synthetic_pcod_fitness_dataset.csv")
 df.dropna(inplace=True)
 
-# Encode categorical columns
+# Encode labels
 diet_le = LabelEncoder()
 workout_le = LabelEncoder()
 
 df['Recommended_Diet_Label'] = diet_le.fit_transform(df['Recommended_Diet'])
 df['Recommended_Workout_Label'] = workout_le.fit_transform(df['Recommended_Workout'])
 
-# Prepare input features
+# Train models
 X_rf = df[['BMI', 'BMR', 'Stress_Level(1-10)', 'Sleep_Hours', 'PCOS_Diagnosis']]
 y_rf_diet = df['Recommended_Diet_Label']
 y_rf_workout = df['Recommended_Workout_Label']
@@ -26,15 +52,16 @@ y_rf_workout = df['Recommended_Workout_Label']
 rf_diet = RandomForestClassifier(random_state=42).fit(X_rf, y_rf_diet)
 rf_workout = RandomForestClassifier(random_state=42).fit(X_rf, y_rf_workout)
 
-# Linear Regression Model for Calorie Prediction
+# Calorie model
 X_cal = df[['Age', 'Weight(kg)', 'Height(cm)', 'BMR', 'Daily_Steps', 'Active_Minutes']]
 y_cal = df['Calorie_Target']
 reg_calorie = LinearRegression().fit(X_cal, y_cal)
 
-# Streamlit App
-st.title("PCOD Fitness Recommender")
+# UI
+st.title("PCOD Wellness Recommender 🌸")
 
-st.header("Enter User Details:")
+st.header("Enter Your Details Below")
+
 age = st.number_input("Age", min_value=10, max_value=80, value=25)
 weight = st.number_input("Weight (kg)", min_value=30.0, max_value=200.0, value=60.0)
 height = st.number_input("Height (cm)", min_value=120.0, max_value=220.0, value=165.0)
