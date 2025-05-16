@@ -5,39 +5,44 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import LabelEncoder
 
-# Custom CSS for pink/white background and black text
+# Inject CSS for custom theme: pink/white background and dark contrasting text
 st.markdown("""
     <style>
-    body, .stApp {
+    .stApp {
         background-color: #ffe6f0;
-        color: black;
+        color: #1f1f1f;
     }
-    .stTextInput > div > div > input, 
-    .stNumberInput input, 
-    .stSlider > div, 
-    .stRadio > div {
-        color: black !important;
+    h1, h2, h3, h4, h5, h6, p, label, div {
+        color: #1f1f1f !important;
+    }
+    .stNumberInput input,
+    .stTextInput input,
+    .stSlider div,
+    .stRadio label {
+        color: #1f1f1f !important;
     }
     .stButton > button {
-        background-color: #ffb6c1;
-        color: black;
+        background-color: #ff8fa3;
+        color: #1f1f1f;
+        font-weight: bold;
         border: none;
     }
     .stButton > button:hover {
-        background-color: #ff99bb;
+        background-color: #ff6f91;
     }
     .stSuccess {
         background-color: #fff0f5 !important;
-        color: black !important;
+        color: #1f1f1f !important;
+        font-weight: bold;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# Load and prepare dataset
+# Load and preprocess data
 df = pd.read_csv("synthetic_pcod_fitness_dataset.csv")
 df.dropna(inplace=True)
 
-# Encode labels
+# Encode labels manually for diet and workout
 diet_le = LabelEncoder()
 workout_le = LabelEncoder()
 
@@ -46,44 +51,49 @@ df['Recommended_Workout_Label'] = workout_le.fit_transform(df['Recommended_Worko
 
 # Train models
 X_rf = df[['BMI', 'BMR', 'Stress_Level(1-10)', 'Sleep_Hours', 'PCOS_Diagnosis']]
-y_rf_diet = df['Recommended_Diet_Label']
-y_rf_workout = df['Recommended_Workout_Label']
+y_diet = df['Recommended_Diet_Label']
+y_workout = df['Recommended_Workout_Label']
 
-rf_diet = RandomForestClassifier(random_state=42).fit(X_rf, y_rf_diet)
-rf_workout = RandomForestClassifier(random_state=42).fit(X_rf, y_rf_workout)
+rf_diet = RandomForestClassifier(random_state=42).fit(X_rf, y_diet)
+rf_workout = RandomForestClassifier(random_state=42).fit(X_rf, y_workout)
 
-# Calorie model
+# Train calorie model
 X_cal = df[['Age', 'Weight(kg)', 'Height(cm)', 'BMR', 'Daily_Steps', 'Active_Minutes']]
 y_cal = df['Calorie_Target']
-reg_calorie = LinearRegression().fit(X_cal, y_cal)
+calorie_model = LinearRegression().fit(X_cal, y_cal)
 
 # UI
-st.title("PCOD Wellness Recommender 🌸")
+st.title("🌸 PCOD Fitness & Wellness Recommender")
 
-st.header("Enter Your Details Below")
+st.header("📝 Enter Your Information")
 
-age = st.number_input("Age", min_value=10, max_value=80, value=25)
-weight = st.number_input("Weight (kg)", min_value=30.0, max_value=200.0, value=60.0)
-height = st.number_input("Height (cm)", min_value=120.0, max_value=220.0, value=165.0)
-bmr = st.number_input("Basal Metabolic Rate (BMR)", min_value=800, max_value=3000, value=1500)
-daily_steps = st.number_input("Daily Steps", min_value=0, max_value=20000, value=6000)
-active_minutes = st.number_input("Active Minutes per Day", min_value=0, max_value=300, value=45)
-stress_level = st.slider("Stress Level (1-10)", 1, 10, 5)
+age = st.number_input("Age", 10, 80, 25)
+weight = st.number_input("Weight (kg)", 30.0, 200.0, 60.0)
+height = st.number_input("Height (cm)", 120.0, 220.0, 165.0)
+bmr = st.number_input("Basal Metabolic Rate (BMR)", 800, 3000, 1500)
+daily_steps = st.number_input("Daily Steps", 0, 20000, 6000)
+active_minutes = st.number_input("Active Minutes per Day", 0, 300, 45)
+stress_level = st.slider("Stress Level (1–10)", 1, 10, 5)
 sleep_hours = st.slider("Sleep Hours", 0.0, 12.0, 7.0)
-pcos_val = st.radio("PCOS Diagnosis", ["No", "Yes"]) == "Yes"
+pcos_diagnosis = st.radio("PCOS Diagnosis", ["No", "Yes"]) == "Yes"
 
-if st.button("Get Recommendations"):
-    bmi_val = weight / ((height / 100) ** 2)
+# Prediction button
+if st.button("💡 Get Personalized Recommendations"):
+    bmi = weight / ((height / 100) ** 2)
 
-    # Calorie Prediction
-    calorie_input = np.array([[age, weight, height, bmr, daily_steps, active_minutes]])
-    pred_calorie = reg_calorie.predict(calorie_input)[0]
+    # Calorie prediction
+    cal_input = np.array([[age, weight, height, bmr, daily_steps, active_minutes]])
+    cal_output = int(calorie_model.predict(cal_input)[0])
 
-    # Diet & Workout Prediction
-    input_rf = np.array([[bmi_val, bmr, stress_level, sleep_hours, int(pcos_val)]])
-    pred_diet = diet_le.inverse_transform(rf_diet.predict(input_rf))[0]
-    pred_workout = workout_le.inverse_transform(rf_workout.predict(input_rf))[0]
+    # Diet & workout prediction
+    model_input = np.array([[bmi, bmr, stress_level, sleep_hours, int(pcos_diagnosis)]])
+    predicted_diet_label = rf_diet.predict(model_input)[0]
+    predicted_workout_label = rf_workout.predict(model_input)[0]
 
-    st.success(f"Recommended Daily Calorie Intake: {int(pred_calorie)} kcal")
-    st.success(f"Recommended Diet: {pred_diet}")
-    st.success(f"Recommended Workout: {pred_workout}")
+    predicted_diet = diet_le.inverse_transform([predicted_diet_label])[0]
+    predicted_workout = workout_le.inverse_transform([predicted_workout_label])[0]
+
+    # Results
+    st.success(f"Recommended Daily Calorie Intake: {cal_output} kcal")
+    st.success(f"Recommended Diet: {predicted_diet}")
+    st.success(f"Recommended Workout: {predicted_workout}")
